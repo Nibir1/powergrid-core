@@ -1,0 +1,30 @@
+version: '3'
+services:
+  ingestion-engine:
+    # Points to YOUR Azure Registry
+    image: acrpowergriddev001.azurecr.io/ingestion-engine:latest
+    restart: always
+    environment:
+      - PORT=8080
+      - LOG_LEVEL=debug
+
+  intelligence-api:
+    image: acrpowergriddev001.azurecr.io/intelligence-api:latest
+    restart: always
+    environment:
+      - PORT=8000
+
+  gateway:
+    image: acrpowergriddev001.azurecr.io/gateway:latest
+    ports:
+      - "80:80"
+    restart: always
+    depends_on:
+      - ingestion-engine
+      - intelligence-api
+
+  web:
+    image: acrpowergriddev001.azurecr.io/web:latest
+    restart: always
+    environment:
+      - VITE_API_URL=/api

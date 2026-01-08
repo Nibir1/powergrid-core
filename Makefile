@@ -66,6 +66,11 @@ test: ## Run unit tests for Go, Python, and React
 # -----------------------------------------------------------------------------
 # INFRASTRUCTURE (Terraform / Azure)
 # -----------------------------------------------------------------------------
+# Azure Resource Names (Must match main.tf)
+ACR_NAME      = acrpowergriddev001
+RG_NAME       = rg-powergrid-dev-weu-001
+WEB_APP_NAME  = app-powergrid-core-dev
+
 infra-init: ## Initialize Terraform (download providers)
 	@echo "Initializing Terraform..."
 	cd $(TF_DIR) && terraform init
@@ -74,10 +79,40 @@ infra-plan: infra-init ## Show the Azure resources that will be created
 	@echo "Planning Infrastructure..."
 	cd $(TF_DIR) && terraform plan
 
-infra-deploy: infra-init ## Apply Terraform config to provision Azure resources
-	@echo "Deploying to Azure..."
+infra-apply: infra-init ## Provision all Azure resources (ACR, App Service, etc.)
+	@echo "Provisioning Azure Infrastructure..."
 	cd $(TF_DIR) && terraform apply -auto-approve
-	@echo "Infrastructure deployed successfully."
+	@echo "Infrastructure is ready."
+
+infra-build: ## Build locally and Push to Azure Container Registry (ACR)
+	@echo "Logging into Azure Container Registry..."
+	az acr login --name $(ACR_NAME)
+	
+	@echo "1. Building & Pushing Ingestion Engine..."
+	docker build -t $(ACR_NAME).azurecr.io/ingestion-engine:latest ./services/ingestion-engine
+	docker push $(ACR_NAME).azurecr.io/ingestion-engine:latest
+	
+	@echo "2. Building & Pushing Intelligence API..."
+	docker build -t $(ACR_NAME).azurecr.io/intelligence-api:latest ./services/intelligence-api
+	docker push $(ACR_NAME).azurecr.io/intelligence-api:latest
+	
+	@echo "3. Building & Pushing Gateway..."
+	docker build -t $(ACR_NAME).azurecr.io/gateway:latest ./services/gateway
+	docker push $(ACR_NAME).azurecr.io/gateway:latest
+	
+	@echo "4. Building & Pushing Frontend (Web)..."
+	docker build -t $(ACR_NAME).azurecr.io/web:latest ./web
+	docker push $(ACR_NAME).azurecr.io/web:latest
+	
+	@echo "All images pushed to $(ACR_NAME).azurecr.io"
+
+infra-refresh: ## Restart the Azure Web App to pull the latest images
+	@echo "Restarting Azure Web App to apply changes..."
+	az webapp restart --name $(WEB_APP_NAME) --resource-group $(RG_NAME)
+	@echo "App restarted. Check your URL in 2 minutes."
+
+infra-up: infra-apply infra-build infra-refresh ## One-Command Deployment: Provision, Build, and Launch
+	@echo "PowerGrid is fully deployed to Azure!"
 
 infra-nuke: ## DESTROY all Azure resources (Use with caution!)
 	@echo "DESTROYING AZURE RESOURCES..."
