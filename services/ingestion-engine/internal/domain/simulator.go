@@ -34,7 +34,7 @@ func NewSimulator() *Simulator {
 // count: Number of meters to simulate.
 // interval: How often they update.
 func (s *Simulator) Start(count int, interval time.Duration) {
-	fmt.Printf("⚡ Starting Simulation for %d devices...\n", count)
+	fmt.Printf("Starting Simulation for %d devices...\n", count)
 
 	// Initialize devices
 	for i := 1; i <= count; i++ {
@@ -50,17 +50,31 @@ func (s *Simulator) Start(count int, interval time.Duration) {
 				case <-s.stopChan:
 					return
 				case t := <-ticker.C:
-					// Generate new data
-					reading := GenerateSimulatedValue(id, t)
-
-					// Thread-Safe Write
-					s.mu.Lock()
-					s.readings[id] = reading
-					s.mu.Unlock()
+					// Thread-Safe Update
+					s.updateReading(id, t)
 				}
 			}
 		}(deviceID)
 	}
+}
+
+// GenerateData runs a SINGLE synchronous pass for testing purposes.
+// This allows us to test the logic without waiting for tickers.
+func (s *Simulator) GenerateData(count int) {
+	now := time.Now()
+	for i := 1; i <= count; i++ {
+		deviceID := fmt.Sprintf("METER-%03d", i)
+		s.updateReading(deviceID, now)
+	}
+}
+
+// Helper to centralize the update logic
+func (s *Simulator) updateReading(id string, t time.Time) {
+	reading := GenerateSimulatedValue(id, t)
+
+	s.mu.Lock()
+	s.readings[id] = reading
+	s.mu.Unlock()
 }
 
 // GetAllReadings performs a Thread-Safe Read of the current state.

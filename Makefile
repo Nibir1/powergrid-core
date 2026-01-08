@@ -50,16 +50,18 @@ clean: ## Deep clean: Stop containers, remove volumes, images, and build cache
 # -----------------------------------------------------------------------------
 # TESTING
 # -----------------------------------------------------------------------------
+# Rebuild to ensure test dependencies (pytest) are installed
+# "--run" creates a single pass (no watch mode)
 test: ## Run unit tests for Go, Python, and React
 	@echo "Running Go Tests..."
-	cd services/ingestion-engine && go test ./...
+	cd services/ingestion-engine && go test -v ./...
 	
 	@echo "Running Python Tests..."
-	# Uses docker to run pytest to avoid needing local python venv
-	docker-compose -f $(DC_FILE) run --rm intelligence-api pytest || echo "Warning: Python container needs to be built first"
+	docker-compose -f $(DC_FILE) build intelligence-api
+	docker-compose -f $(DC_FILE) run --rm intelligence-api pytest
 	
-	@echo "Running React Tests..."
-	cd web && npm test -- --watchAll=false
+	@echo "Running React Tests (Vitest)..."
+	cd web && npm run test -- --run
 
 # -----------------------------------------------------------------------------
 # INFRASTRUCTURE (Terraform / Azure)

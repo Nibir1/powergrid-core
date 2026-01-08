@@ -26,7 +26,7 @@ const EnergyDashboard: React.FC = () => {
     return (
         <div style={styles.container}>
             <div style={styles.header}>
-                <h3>⚡ Live Grid Telemetry</h3>
+                <h3>Live Grid Telemetry</h3>
                 <span style={styles.badge}>Live</span>
             </div>
             <p style={styles.subtext}>Simulated IoT Data Stream (Go Backend) • Last Sync: {lastUpdated.toLocaleTimeString()}</p>
